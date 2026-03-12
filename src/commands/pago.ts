@@ -5,7 +5,7 @@ import { currentMonth, formatBRL } from "../lib/format";
 
 export async function pago({ args, name, send }: CommandContext): Promise<void> {
   if (!args.trim()) {
-    await send("Uso: !pago <conta> [conta2] [conta3]...\nEx: !pago luz carro tim");
+    await send("Uso: !pago <conta> [, conta2] [, conta3]...\nEx: !pago luz, carro, tim");
     return;
   }
 
@@ -14,14 +14,17 @@ export async function pago({ args, name, send }: CommandContext): Promise<void> 
 
   const bills = getActiveBills();
   const payments = getPaymentsForMonth(month);
-  const queries = args.trim().split(/\s+/);
+  const queries = args.trim().split(/\s*,\s*/);
 
   const confirmed: string[] = [];
   const alreadyPaid: string[] = [];
   const notFound: string[] = [];
 
   for (const query of queries) {
-    const matches = fuzzyFindBills(query, bills);
+    const num = /^\d+$/.test(query.trim()) ? parseInt(query.trim(), 10) : NaN;
+    const matches = !isNaN(num)
+      ? bills[num - 1] ? [bills[num - 1]] : []
+      : fuzzyFindBills(query, bills);
 
     if (matches.length === 0) {
       notFound.push(query);
@@ -37,12 +40,15 @@ export async function pago({ args, name, send }: CommandContext): Promise<void> 
       continue;
     }
 
-    markPaid(bill.id, month, name);
-    // Update local cache so duplicate queries in same call don't re-mark
-    const p = payments.find((p) => p.bill_id === bill.id);
-    if (p) p.paid_at = new Date().toISOString();
-
-    confirmed.push(`${bill.name} — ${formatBRL(bill.amount)}`);
+    const ok = markPaid(bill.id, month, name);
+    if (ok) {
+      // Update local cache so duplicate queries in same call don't re-mark
+      const p = payments.find((p) => p.bill_id === bill.id);
+      if (p) p.paid_at = new Date().toISOString();
+      confirmed.push(`${bill.name} — ${formatBRL(bill.amount)}`);
+    } else {
+      notFound.push(bill.name);
+    }
   }
 
   const lines: string[] = [];

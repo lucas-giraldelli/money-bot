@@ -10,7 +10,7 @@ export async function ajuda({ send }: CommandContext): Promise<void> {
     "• `!historico` — resumo dos últimos 3 meses",
     "",
     "✅ *Pagamentos*",
-    "• `!pago <conta> [conta2]...` — marca como paga",
+    "• `!pago <conta> [, conta2]...` — marca como paga (ex: `!pago luz, carro`)",
     "• `!unpago <conta>` — desmarca pagamento",
     "",
     "🛒 *Gastos avulsos*",
