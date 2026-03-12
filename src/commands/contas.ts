@@ -27,8 +27,9 @@ export async function contas({ send }: CommandContext): Promise<void> {
     const totalPaid = bills
       .filter((b) => paymentMap.get(b.id)?.paid_at)
       .reduce((s, b) => s + b.amount, 0);
+    const totalRemaining = total - totalPaid;
 
-    lines.push(`_Pagas: ${formatBRL(totalPaid)} · Total: ${formatBRL(total)}_`);
+    lines.push(`_Pagas: ${formatBRL(totalPaid)} · Restante: ${formatBRL(totalRemaining)}_`);
   }
 
   // --- Gastos avulsos ---

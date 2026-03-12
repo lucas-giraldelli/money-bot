@@ -42,25 +42,3 @@ const seedSetting = db.prepare(
 seedSetting.run("income", "0");
 seedSetting.run("timezone", process.env.TIMEZONE ?? "America/Manaus");
 
-// Seed initial bills if table is empty
-const count = (db.prepare("SELECT COUNT(*) as c FROM bills").get() as { c: number }).c;
-if (count === 0) {
-  const insert = db.prepare("INSERT INTO bills (name, amount) VALUES (?, ?)");
-  const initialBills = [
-    "Nubank Thyci",
-    "Carro",
-    "IPTU 1/10",
-    "Nubank PJ",
-    "TIM",
-    "Internet",
-    "Luz",
-    "Unimed",
-    "Financiamento Caixa",
-    "Cartão Inter",
-    "Mercado Pago",
-    "Malai",
-  ];
-  for (const name of initialBills) {
-    insert.run(name, 0.01);
-  }
-}
