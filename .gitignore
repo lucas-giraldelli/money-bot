@@ -3,3 +3,5 @@ data/money.db
 data/auth/*
 !data/auth/.gitkeep
 .env
+data/*
+data/auth
