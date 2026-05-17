@@ -11,5 +11,6 @@ export async function defgrupo({ jid, send }: CommandContext): Promise<void> {
 
   groups.push(jid);
   setSetting("groups", JSON.stringify(groups));
-  await send("✅ Grupo cadastrado! O bot vai responder aqui.");
+  console.log(`[defgrupo] grupo adicionado: ${jid}`);
+  await send(`✅ Grupo cadastrado! O bot vai responder aqui.\nJID: ${jid}`);
 }
