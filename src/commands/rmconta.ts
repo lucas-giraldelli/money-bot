@@ -18,6 +18,14 @@ export async function rmconta({ args, send }: CommandContext): Promise<void> {
   }
 
   if (matches.length > 1) {
+    const { normalize } = await import("../lib/fuzzy");
+    const exact = matches.filter((b) => normalize(b.name) === normalize(args));
+    if (exact.length === 1) {
+      const bill = exact[0];
+      deleteBill(bill.id);
+      await send(`🗑️ Conta *${bill.name}* removida.`);
+      return;
+    }
     const opts = matches.map((b, i) => `${i + 1}. ${b.name} — ${formatBRL(b.amount)}`).join("\n");
     await send(`Qual conta remover?\n${opts}\n\nDigite !rmconta com o nome exato.`);
     return;
