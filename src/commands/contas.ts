@@ -44,7 +44,7 @@ export async function contas({ send }: CommandContext): Promise<void> {
 
       const payment = paymentMap.get(bill.id);
       const icon = payment?.paid_at ? "✅" : "⏳";
-      lines.push(`${i + 1}. ${icon} ${getDisplayName(bill)} — ${formatBRL(bill.amount)}`);
+      lines.push(`${i + 1}. ${icon} ${getDisplayName(bill)} - ${formatBRL(bill.amount)}`);
       if (!payment?.paid_at) totalRemaining += bill.amount;
     }
 
@@ -56,7 +56,7 @@ export async function contas({ send }: CommandContext): Promise<void> {
     lines.push("");
     lines.push("🛒 *Gastos avulsos*");
     for (const e of expenses) {
-      lines.push(`• ${e.description} — ${formatBRL(e.amount)}`);
+      lines.push(`• ${e.description} - ${formatBRL(e.amount)}`);
     }
     const totalExp = expenses.reduce((s, e) => s + e.amount, 0);
     lines.push(`_Total avulsos: ${formatBRL(totalExp)}_`);

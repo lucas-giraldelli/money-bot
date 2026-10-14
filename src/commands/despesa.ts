@@ -21,5 +21,5 @@ export async function gasto({ args, name, send }: CommandContext): Promise<void>
   const month = currentMonth();
   addExpense(description, amount, month, name);
 
-  await send(`🛒 Gasto registrado: *${description}* — ${formatBRL(amount)}`);
+  await send(`🛒 Gasto registrado: *${description}* - ${formatBRL(amount)}`);
 }

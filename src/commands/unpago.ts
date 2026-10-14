@@ -29,7 +29,7 @@ export async function unpago({ args, send }: CommandContext): Promise<void> {
   }
 
   if (matches.length > 1) {
-    const opts = matches.map((b, i) => `${i + 1}. ${b.name} — ${formatBRL(b.amount)}`).join("\n");
+    const opts = matches.map((b, i) => `${i + 1}. ${b.name} - ${formatBRL(b.amount)}`).join("\n");
     await send(`Qual conta?\n${opts}`);
     return;
   }
@@ -59,5 +59,5 @@ export async function unpago({ args, send }: CommandContext): Promise<void> {
   }
 
   unmarkPaid(bill.id, month);
-  await send(`↩️ *${bill.name}* desmarcada — volta para pendentes.`);
+  await send(`↩️ *${bill.name}* desmarcada - volta para pendentes.`);
 }

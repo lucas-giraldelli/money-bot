@@ -36,7 +36,7 @@ export async function saldo({ send }: CommandContext): Promise<void> {
   const balance = income - totalPaid - totalExpenses;
 
   const lines: string[] = [];
-  lines.push(`📊 *Saldo — ${formatMonthLabel(month)}*`);
+  lines.push(`📊 *Saldo - ${formatMonthLabel(month)}*`);
   lines.push("");
   if (income > 0) {
     lines.push(`💵 Renda: ${formatBRL(income)}`);

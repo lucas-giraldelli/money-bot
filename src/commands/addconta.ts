@@ -91,7 +91,7 @@ export async function addconta({ args, send }: CommandContext): Promise<void> {
     updateBillAmount(exactMatch.id, amount);
     if (current !== null && total !== null) {
       updateBillInstallment(exactMatch.id, current, total);
-      await send(`✏️ *${baseName}* atualizada: ${formatBRL(amount)} — parcela ${current}/${total}`);
+      await send(`✏️ *${baseName}* atualizada: ${formatBRL(amount)} - parcela ${current}/${total}`);
     } else {
       await send(`✏️ *${exactMatch.name}* atualizada: ${formatBRL(amount)}`);
     }
@@ -101,7 +101,7 @@ export async function addconta({ args, send }: CommandContext): Promise<void> {
   addBill(baseName, amount, current ?? undefined, total ?? undefined);
 
   if (current !== null && total !== null) {
-    await send(`➕ *${baseName}* adicionada: ${formatBRL(amount)} — parcela ${current}/${total}`);
+    await send(`➕ *${baseName}* adicionada: ${formatBRL(amount)} - parcela ${current}/${total}`);
   } else {
     await send(`➕ *${baseName}* adicionada: ${formatBRL(amount)}`);
   }

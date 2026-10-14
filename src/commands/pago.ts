@@ -67,7 +67,7 @@ export async function pago({ args, name, send }: CommandContext): Promise<void> 
       // Update local cache so duplicate queries in same call don't re-mark
       const p = payments.find((p) => p.bill_id === bill.id);
       if (p) p.paid_at = new Date().toISOString();
-      confirmed.push(`${bill.name} — ${formatBRL(bill.amount)}`);
+      confirmed.push(`${bill.name} - ${formatBRL(bill.amount)}`);
     } else {
       notFound.push(bill.name);
     }

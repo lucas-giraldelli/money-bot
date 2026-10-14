@@ -22,8 +22,8 @@ export async function status({ send }: CommandContext): Promise<void> {
   const paid = payments.filter((p) => p.paid_at !== null);
   const pending = payments.filter((p) => p.paid_at === null);
 
-  const paidLines = paid.map((p) => `• ${p.name} — ${formatBRL(p.amount)}`);
-  const pendingLines = pending.map((p) => `• ${p.name} — ${formatBRL(p.amount)}`);
+  const paidLines = paid.map((p) => `• ${p.name} - ${formatBRL(p.amount)}`);
+  const pendingLines = pending.map((p) => `• ${p.name} - ${formatBRL(p.amount)}`);
 
   const totalPaid = paid.reduce((s, p) => s + p.amount, 0) + getWeeklyPaidTotal(month);
   let totalPending = pending.reduce((s, p) => s + p.amount, 0);
@@ -50,9 +50,9 @@ export async function status({ send }: CommandContext): Promise<void> {
   }
 
   if (expenses.length > 0) {
-    lines.push(`🛒 *Gastos avulsos* — ${formatBRL(totalExpenses)}`);
+    lines.push(`🛒 *Gastos avulsos* - ${formatBRL(totalExpenses)}`);
     for (const e of expenses) {
-      lines.push(`• ${e.description} — ${formatBRL(e.amount)}`);
+      lines.push(`• ${e.description} - ${formatBRL(e.amount)}`);
     }
     lines.push("");
   }

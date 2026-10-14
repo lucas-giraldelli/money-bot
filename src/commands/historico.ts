@@ -18,7 +18,7 @@ export async function historico({ send }: CommandContext): Promise<void> {
   }
 
   const lines: string[] = [];
-  lines.push("📅 *Histórico — últimos 3 meses*");
+  lines.push("📅 *Histórico - últimos 3 meses*");
 
   for (const month of months) {
     const payments = getPaymentsForMonth(month);
