@@ -1,6 +1,6 @@
 import db from "./connection";
 import type { Bill } from "./bills";
-import { dueDatesBetween, dueDatesInMonth, nextWeekdayAfter, DEFAULT_WEEKDAY } from "../lib/weekly";
+import { dueDatesBetween, dueDatesInMonth, DEFAULT_WEEKDAY } from "../lib/weekly";
 
 export type WeeklyPayment = {
   id: number;
@@ -21,7 +21,6 @@ export type WeeklyStatus = {
   monthDues: string[];    // every due date in the current month
   upcoming: string[];     // due dates still ahead this month
   paidInMonth: number;    // how many of monthDues are covered
-  nextDue: string;        // oldest open due date, or the upcoming one when em dia
 };
 
 export function getWeeklyStatus(bill: Bill, today: string, month: string): WeeklyStatus {
@@ -36,7 +35,6 @@ export function getWeeklyStatus(bill: Bill, today: string, month: string): Weekl
     monthDues,
     upcoming: monthDues.filter((d) => d > today && d > paidThrough),
     paidInMonth: monthDues.filter((d) => d <= paidThrough).length,
-    nextDue: pending[0] ?? nextWeekdayAfter(today > paidThrough ? today : paidThrough, weekday),
   };
 }
 

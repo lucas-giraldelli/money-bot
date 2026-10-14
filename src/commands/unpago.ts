@@ -45,11 +45,8 @@ export async function unpago({ args, send }: CommandContext): Promise<void> {
     undoWeeklyPayment(last);
     const weekday = bill.weekday ?? DEFAULT_WEEKDAY;
     const weeks = dueDatesBetween(last.prev_paid_through, last.paid_through, weekday);
-    const lines = [`↩️ *${bill.name}* — pagamento de ${formatBRL(last.amount)} desfeito`];
-    if (weeks.length > 0) {
-      lines.push(`${formatWeeks(weeks, weekday)} ${weeks.length === 1 ? "volta" : "voltam"} para pendentes.`);
-    }
-    await send(lines.join("\n"));
+    const label = weeks.length > 0 ? ` ${formatWeeks(weeks, weekday)}` : "";
+    await send(`↩️ *${bill.name}*${label} desmarcada - ${formatBRL(last.amount)}`);
     return;
   }
 

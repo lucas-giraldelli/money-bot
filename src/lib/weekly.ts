@@ -66,12 +66,6 @@ export function dueDatesInMonth(month: string, weekday: number): string[] {
   return dueDatesBetween(addDays(`${month}-01`, -1), lastDay, weekday);
 }
 
-// "2026-10-16" → "16/10"
-export function formatDayMonth(date: string): string {
-  const [, m, d] = date.split("-");
-  return `${d}/${m}`;
-}
-
 // Position of a due date within its month: "2026-10-16" (sexta) → { index: 3, total: 5 }
 export function weekOfMonth(date: string, weekday: number): { index: number; total: number } {
   const index = Math.ceil(Number(date.slice(8, 10)) / 7);
@@ -85,8 +79,8 @@ function joinPt(items: string[]): string {
 }
 
 // Labels due dates by week of month:
-//   ["2026-10-16"]                → "semana 3/5"
-//   ["2026-10-16", "2026-10-23"]  → "semanas 3 e 4/5"
+//   ["2026-10-16"]                → "3/5"
+//   ["2026-10-16", "2026-10-23"]  → "3 e 4/5"
 //   ["2026-10-30", "2026-11-06"]  → "5/5 out + 1/4 nov"
 export function formatWeeks(dates: string[], weekday: number): string {
   const byMonth = new Map<string, string[]>();
@@ -98,7 +92,7 @@ export function formatWeeks(dates: string[], weekday: number): string {
   if (byMonth.size === 1) {
     const total = weekOfMonth(dates[0], weekday).total;
     const indexes = dates.map((d) => String(weekOfMonth(d, weekday).index));
-    return `${dates.length === 1 ? "semana" : "semanas"} ${joinPt(indexes)}/${total}`;
+    return `${joinPt(indexes)}/${total}`;
   }
 
   return [...byMonth.entries()]
@@ -115,13 +109,12 @@ type WeeklySummary = {
   pending: string[];
   monthDues: string[];
   paidInMonth: number;
-  nextDue: string;
 };
 
-// Line shown by !contas / !status:
-//   "✅" "Nice — em dia (2/5) · próx. sexta 16/10"
-//   "⏳" "Nice — R$ 500,00 · semana 3/5"
-//   "⚠️" "Nice — R$ 1.000,00 · semanas 3 e 4/5"
+// Line shown by !contas / !status (em dia shows paid so far, otherwise what is owed):
+//   "✅" "Nice 2/5 (semanal) - R$ 1.000,00"
+//   "⏳" "Nice 3/5 (semanal) - R$ 500,00"
+//   "⚠️" "Nice 3 e 4/5 (semanal) - R$ 1.000,00"
 export function describeWeekly(
   name: string,
   amount: number,
@@ -130,11 +123,11 @@ export function describeWeekly(
   if (s.pending.length === 0) {
     return {
       icon: "✅",
-      text: `${name} — em dia (${s.paidInMonth}/${s.monthDues.length}) · próx. ${WEEKDAY_NAMES[s.weekday]} ${formatDayMonth(s.nextDue)}`,
+      text: `${name} ${s.paidInMonth}/${s.monthDues.length} (semanal) - ${formatBRL(amount * s.paidInMonth)}`,
     };
   }
   return {
     icon: s.pending.length === 1 ? "⏳" : "⚠️",
-    text: `${name} — ${formatBRL(amount * s.pending.length)} · ${formatWeeks(s.pending, s.weekday)}`,
+    text: `${name} ${formatWeeks(s.pending, s.weekday)} (semanal) - ${formatBRL(amount * s.pending.length)}`,
   };
 }

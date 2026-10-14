@@ -48,7 +48,7 @@ export async function saldo({ send }: CommandContext): Promise<void> {
   lines.push(`🛒 Gastos avulsos: ${formatBRL(totalExpenses)}`);
   for (const { bill, status } of weeklyStatuses) {
     const n = status.monthDues.length;
-    lines.push(`🔁 ${bill.name}: ${n} × ${formatBRL(bill.amount)} = ${formatBRL(n * bill.amount)} no mês`);
+    lines.push(`🔁 ${bill.name} (semanal): ${n}x ${formatBRL(bill.amount)} = ${formatBRL(n * bill.amount)}`);
   }
   lines.push("");
   if (income > 0) {

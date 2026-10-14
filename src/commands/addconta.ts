@@ -16,8 +16,6 @@ import {
   parseWeekday,
   today,
   lastWeekdayOnOrBefore,
-  nextWeekdayAfter,
-  formatDayMonth,
 } from "../lib/weekly";
 
 // Parses "X/Y" suffix from name, e.g. "Malai 7/10" → { baseName: "Malai", current: 7, total: 10 }
@@ -124,7 +122,7 @@ async function addOrUpdateWeekly(
     const weekday = weekdayArg ?? exactMatch.weekday ?? DEFAULT_WEEKDAY;
     updateBillAmount(exactMatch.id, amount);
     updateBillWeekday(exactMatch.id, weekday);
-    await send(`✏️ *${exactMatch.name}* atualizada: ${formatBRL(amount)}/semana — vence toda ${WEEKDAY_NAMES[weekday]}`);
+    await send(`✏️ *${exactMatch.name}* atualizada: ${formatBRL(amount)} (semanal, ${WEEKDAY_NAMES[weekday]})`);
     return;
   }
 
@@ -132,15 +130,13 @@ async function addOrUpdateWeekly(
   const weekday = weekdayArg ?? DEFAULT_WEEKDAY;
   const now = today();
   const paidThrough = lastWeekdayOnOrBefore(now, weekday);
-  const next = nextWeekdayAfter(now, weekday);
 
   // Monthly → weekly: retire the old bill so its history keeps the old amount
   if (exactMatch) retireBill(exactMatch.id);
   addWeeklyBill(exactMatch?.name ?? name, amount, weekday, paidThrough);
 
   await send(
-    `${exactMatch ? "✏️" : "➕"} *${exactMatch?.name ?? name}* ${exactMatch ? "agora é semanal" : "adicionada"}: ` +
-      `${formatBRL(amount)}/semana — vence toda ${WEEKDAY_NAMES[weekday]}\n` +
-      `Em dia até ${formatDayMonth(paidThrough)} · próx. ${WEEKDAY_NAMES[weekday]} ${formatDayMonth(next)}`,
+    `${exactMatch ? "✏️" : "➕"} *${exactMatch?.name ?? name}* ${exactMatch ? "atualizada" : "adicionada"}: ` +
+      `${formatBRL(amount)} (semanal, ${WEEKDAY_NAMES[weekday]})`,
   );
 }

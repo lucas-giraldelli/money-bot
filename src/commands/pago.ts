@@ -9,7 +9,7 @@ import {
 } from "../db/index";
 import { fuzzyFindBills } from "../lib/fuzzy";
 import { currentMonth, formatBRL } from "../lib/format";
-import { today, formatWeeks, formatDayMonth, nextWeekdayAfter, WEEKDAY_NAMES } from "../lib/weekly";
+import { today, formatWeeks } from "../lib/weekly";
 
 export async function pago({ args, name, send }: CommandContext): Promise<void> {
   if (!args.trim()) {
@@ -51,12 +51,7 @@ export async function pago({ args, name, send }: CommandContext): Promise<void> 
       }
       const amount = payWeekly(bill, status, month, name);
       bill.paid_through = status.pending[status.pending.length - 1];
-      const dates = status.pending.map(formatDayMonth).join(", ");
-      const next = nextWeekdayAfter(bill.paid_through, status.weekday);
-      confirmed.push(
-        `${bill.name} — ${formatBRL(amount)} · ${formatWeeks(status.pending, status.weekday)} (${dates})\n` +
-          `   próx. ${WEEKDAY_NAMES[status.weekday]} ${formatDayMonth(next)}`,
-      );
+      confirmed.push(`${bill.name} ${formatWeeks(status.pending, status.weekday)} - ${formatBRL(amount)}`);
       continue;
     }
 
