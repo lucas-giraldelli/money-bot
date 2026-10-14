@@ -7,6 +7,9 @@ export type Bill = {
   active: number;
   installment_current: number | null;
   installment_total: number | null;
+  frequency: "monthly" | "weekly";
+  weekday: number | null;
+  paid_through: string | null;
 };
 
 export function getDisplayName(bill: Bill): string {
@@ -48,8 +51,28 @@ export function updateBillInstallment(id: number, current: number, total: number
   ).run(current, total, id);
 }
 
+export function addWeeklyBill(name: string, amount: number, weekday: number, paidThrough: string): Bill {
+  const info = db
+    .prepare(
+      "INSERT INTO bills (name, amount, active, frequency, weekday, paid_through) VALUES (?, ?, 1, 'weekly', ?, ?)",
+    )
+    .run(name, amount, weekday, paidThrough);
+  return db.prepare("SELECT * FROM bills WHERE id = ?").get(info.lastInsertRowid) as Bill;
+}
+
+// Deactivates a bill but keeps its paid history (bill_payments reads amount from the bill)
+export function retireBill(id: number): void {
+  db.prepare("UPDATE bills SET active = 0 WHERE id = ?").run(id);
+  db.prepare("DELETE FROM bill_payments WHERE bill_id = ? AND paid_at IS NULL").run(id);
+}
+
+export function updateBillWeekday(id: number, weekday: number): void {
+  db.prepare("UPDATE bills SET weekday = ? WHERE id = ?").run(weekday, id);
+}
+
 export function deleteBill(id: number): void {
   db.prepare("DELETE FROM bill_payments WHERE bill_id = ?").run(id);
+  db.prepare("DELETE FROM weekly_payments WHERE bill_id = ?").run(id);
   db.prepare("DELETE FROM bills WHERE id = ?").run(id);
 }
 

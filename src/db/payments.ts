@@ -19,7 +19,7 @@ export function getPaymentsForMonth(month: string): BillPaymentWithName[] {
       `SELECT bp.*, b.name, b.amount
        FROM bill_payments bp
        JOIN bills b ON b.id = bp.bill_id
-       WHERE bp.month = ?
+       WHERE bp.month = ? AND b.frequency = 'monthly'
        ORDER BY b.id`,
     )
     .all(month) as BillPaymentWithName[];
@@ -27,7 +27,7 @@ export function getPaymentsForMonth(month: string): BillPaymentWithName[] {
 
 export function ensureMonthPayments(month: string): void {
   const activeBills = db
-    .prepare("SELECT id FROM bills WHERE active = 1")
+    .prepare("SELECT id FROM bills WHERE active = 1 AND frequency = 'monthly'")
     .all() as { id: number }[];
 
   const insert = db.prepare(
