@@ -68,7 +68,16 @@ export async function addconta({ args, send }: CommandContext): Promise<void> {
     return;
   }
 
-  const fullName = parts.slice(0, -1).join(" ").replace(/^["']|["']$/g, "");
+  // Drops stray separators before the value, e.g. "Matricula Nana 1/3 - 630"
+  const fullName = parts
+    .slice(0, -1)
+    .join(" ")
+    .replace(/^["']|["']$/g, "")
+    .replace(/[\s\-–—:,.=]+$/, "");
+  if (!fullName) {
+    await send(`Nome inválido. Ex: !addconta Luz 280`);
+    return;
+  }
   const { baseName, current, total } = parseInstallment(fullName);
 
   if (weekly) {
