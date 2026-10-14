@@ -1,6 +1,15 @@
 import type { CommandContext } from "./types";
-import { getPaymentsForMonth, ensureMonthPayments, getExpensesForMonth, getIncome } from "../db/index";
+import {
+  getPaymentsForMonth,
+  ensureMonthPayments,
+  getExpensesForMonth,
+  getIncome,
+  getActiveBills,
+  getWeeklyStatus,
+  getWeeklyPaidTotal,
+} from "../db/index";
 import { currentMonth, formatBRL, formatMonthLabel } from "../lib/format";
+import { describeWeekly, today } from "../lib/weekly";
 
 export async function status({ send }: CommandContext): Promise<void> {
   const month = currentMonth();
@@ -13,8 +22,18 @@ export async function status({ send }: CommandContext): Promise<void> {
   const paid = payments.filter((p) => p.paid_at !== null);
   const pending = payments.filter((p) => p.paid_at === null);
 
-  const totalPaid = paid.reduce((s, p) => s + p.amount, 0);
-  const totalPending = pending.reduce((s, p) => s + p.amount, 0);
+  const paidLines = paid.map((p) => `• ${p.name} — ${formatBRL(p.amount)}`);
+  const pendingLines = pending.map((p) => `• ${p.name} — ${formatBRL(p.amount)}`);
+
+  const totalPaid = paid.reduce((s, p) => s + p.amount, 0) + getWeeklyPaidTotal(month);
+  let totalPending = pending.reduce((s, p) => s + p.amount, 0);
+
+  for (const bill of getActiveBills().filter((b) => b.frequency === "weekly")) {
+    const status = getWeeklyStatus(bill, today(), month);
+    const { text } = describeWeekly(bill.name, bill.amount, status);
+    (status.pending.length === 0 ? paidLines : pendingLines).push(`• ${text}`);
+    totalPending += bill.amount * (status.pending.length + status.upcoming.length);
+  }
   const totalExpenses = expenses.reduce((s, e) => s + e.amount, 0);
   const balance = income - totalPaid - totalExpenses;
 
@@ -22,20 +41,12 @@ export async function status({ send }: CommandContext): Promise<void> {
   lines.push(`💰 *${formatMonthLabel(month)}*`);
   lines.push("");
 
-  if (paid.length > 0) {
-    lines.push("✅ *Pagas*");
-    for (const p of paid) {
-      lines.push(`• ${p.name} — ${formatBRL(p.amount)}`);
-    }
-    lines.push("");
+  if (paidLines.length > 0) {
+    lines.push("✅ *Pagas*", ...paidLines, "");
   }
 
-  if (pending.length > 0) {
-    lines.push("⏳ *Pendentes*");
-    for (const p of pending) {
-      lines.push(`• ${p.name} — ${formatBRL(p.amount)}`);
-    }
-    lines.push("");
+  if (pendingLines.length > 0) {
+    lines.push("⏳ *Pendentes*", ...pendingLines, "");
   }
 
   if (expenses.length > 0) {

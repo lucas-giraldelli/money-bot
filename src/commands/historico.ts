@@ -1,5 +1,5 @@
 import type { CommandContext } from "./types";
-import { getPaymentsForMonth, getExpensesForMonth } from "../db/index";
+import { getPaymentsForMonth, getExpensesForMonth, getWeeklyPaidTotal } from "../db/index";
 import { currentMonth, formatBRL, formatMonthLabel } from "../lib/format";
 
 export async function historico({ send }: CommandContext): Promise<void> {
@@ -24,11 +24,11 @@ export async function historico({ send }: CommandContext): Promise<void> {
     const payments = getPaymentsForMonth(month);
     const expenses = getExpensesForMonth(month);
 
-    if (payments.length === 0 && expenses.length === 0) continue;
+    const weeklyPaid = getWeeklyPaidTotal(month);
+    if (payments.length === 0 && expenses.length === 0 && weeklyPaid === 0) continue;
 
-    const totalPaid = payments
-      .filter((p) => p.paid_at !== null)
-      .reduce((s, p) => s + p.amount, 0);
+    const totalPaid =
+      payments.filter((p) => p.paid_at !== null).reduce((s, p) => s + p.amount, 0) + weeklyPaid;
     const totalExpenses = expenses.reduce((s, e) => s + e.amount, 0);
 
     lines.push("");

@@ -1,6 +1,15 @@
 import type { CommandContext } from "./types";
-import { getActiveBills, getDisplayName, getPaymentsForMonth, ensureMonthPayments, getExpensesForMonth } from "../db/index";
+import {
+  getActiveBills,
+  getDisplayName,
+  getPaymentsForMonth,
+  ensureMonthPayments,
+  getExpensesForMonth,
+  getWeeklyStatus,
+  getWeeklyPaidTotal,
+} from "../db/index";
 import { formatBRL, currentMonth, formatMonthLabel } from "../lib/format";
+import { describeWeekly, today } from "../lib/weekly";
 
 export async function contas({ send }: CommandContext): Promise<void> {
   const month = currentMonth();
@@ -15,19 +24,29 @@ export async function contas({ send }: CommandContext): Promise<void> {
 
   // --- Contas recorrentes ---
   if (bills.length > 0) {
+    const now = today();
+    // Summed from payments (not active bills) so retired bills paid this month still count, same as !saldo
+    const totalPaid =
+      payments.filter((p) => p.paid_at).reduce((s, p) => s + p.amount, 0) + getWeeklyPaidTotal(month);
+    let totalRemaining = 0;
+
     lines.push("📋 *Contas*");
     for (let i = 0; i < bills.length; i++) {
       const bill = bills[i];
+
+      if (bill.frequency === "weekly") {
+        const status = getWeeklyStatus(bill, now, month);
+        const { icon, text } = describeWeekly(bill.name, bill.amount, status);
+        lines.push(`${i + 1}. ${icon} ${text}`);
+        totalRemaining += bill.amount * (status.pending.length + status.upcoming.length);
+        continue;
+      }
+
       const payment = paymentMap.get(bill.id);
       const icon = payment?.paid_at ? "✅" : "⏳";
       lines.push(`${i + 1}. ${icon} ${getDisplayName(bill)} — ${formatBRL(bill.amount)}`);
+      if (!payment?.paid_at) totalRemaining += bill.amount;
     }
-
-    const total = bills.reduce((s, b) => s + b.amount, 0);
-    const totalPaid = bills
-      .filter((b) => paymentMap.get(b.id)?.paid_at)
-      .reduce((s, b) => s + b.amount, 0);
-    const totalRemaining = total - totalPaid;
 
     lines.push(`_Pagas: ${formatBRL(totalPaid)} · Restante: ${formatBRL(totalRemaining)}_`);
   }
