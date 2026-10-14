@@ -1,7 +1,15 @@
 import type { CommandContext } from "./types";
-import { getActiveBills, getPaymentsForMonth, markPaid, ensureMonthPayments } from "../db/index";
+import {
+  getActiveBills,
+  getPaymentsForMonth,
+  markPaid,
+  ensureMonthPayments,
+  getWeeklyStatus,
+  payWeekly,
+} from "../db/index";
 import { fuzzyFindBills } from "../lib/fuzzy";
 import { currentMonth, formatBRL } from "../lib/format";
+import { today, formatWeeks, formatDayMonth, nextWeekdayAfter, WEEKDAY_NAMES } from "../lib/weekly";
 
 export async function pago({ args, name, send }: CommandContext): Promise<void> {
   if (!args.trim()) {
@@ -33,6 +41,25 @@ export async function pago({ args, name, send }: CommandContext): Promise<void> 
 
     // Pick best single match
     const bill = matches[0];
+
+    // Weekly: pays every due date accumulated up to today
+    if (bill.frequency === "weekly") {
+      const status = getWeeklyStatus(bill, today(), month);
+      if (status.pending.length === 0) {
+        alreadyPaid.push(`${bill.name} (em dia)`);
+        continue;
+      }
+      const amount = payWeekly(bill, status, month, name);
+      bill.paid_through = status.pending[status.pending.length - 1];
+      const dates = status.pending.map(formatDayMonth).join(", ");
+      const next = nextWeekdayAfter(bill.paid_through, status.weekday);
+      confirmed.push(
+        `${bill.name} — ${formatBRL(amount)} · ${formatWeeks(status.pending, status.weekday)} (${dates})\n` +
+          `   próx. ${WEEKDAY_NAMES[status.weekday]} ${formatDayMonth(next)}`,
+      );
+      continue;
+    }
+
     const existing = payments.find((p) => p.bill_id === bill.id);
 
     if (existing?.paid_at) {

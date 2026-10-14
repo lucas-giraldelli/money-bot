@@ -1,7 +1,15 @@
 import type { CommandContext } from "./types";
-import { getActiveBills, getPaymentsForMonth, unmarkPaid, ensureMonthPayments } from "../db/index";
+import {
+  getActiveBills,
+  getPaymentsForMonth,
+  unmarkPaid,
+  ensureMonthPayments,
+  getLastWeeklyPayment,
+  undoWeeklyPayment,
+} from "../db/index";
 import { fuzzyFindBills } from "../lib/fuzzy";
 import { currentMonth, formatBRL } from "../lib/format";
+import { dueDatesBetween, formatWeeks, DEFAULT_WEEKDAY } from "../lib/weekly";
 
 export async function unpago({ args, send }: CommandContext): Promise<void> {
   if (!args.trim()) {
@@ -27,6 +35,24 @@ export async function unpago({ args, send }: CommandContext): Promise<void> {
   }
 
   const bill = matches[0];
+
+  if (bill.frequency === "weekly") {
+    const last = getLastWeeklyPayment(bill.id);
+    if (!last) {
+      await send(`Nenhum pagamento de ${bill.name} para desfazer.`);
+      return;
+    }
+    undoWeeklyPayment(last);
+    const weekday = bill.weekday ?? DEFAULT_WEEKDAY;
+    const weeks = dueDatesBetween(last.prev_paid_through, last.paid_through, weekday);
+    const lines = [`↩️ *${bill.name}* — pagamento de ${formatBRL(last.amount)} desfeito`];
+    if (weeks.length > 0) {
+      lines.push(`${formatWeeks(weeks, weekday)} ${weeks.length === 1 ? "volta" : "voltam"} para pendentes.`);
+    }
+    await send(lines.join("\n"));
+    return;
+  }
+
   const payments = getPaymentsForMonth(month);
   const existing = payments.find((p) => p.bill_id === bill.id);
 
