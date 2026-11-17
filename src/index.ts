@@ -9,7 +9,7 @@ import pino from "pino";
 import qrcode from "qrcode-terminal";
 import fs from "fs";
 import { config } from "./config";
-import { MSG_MAX_AGE_MS } from "./constants";
+import { MSG_MAX_AGE_MS, RECONNECT_BASE_MS, RECONNECT_MAX_MS, LOGGED_OUT_REMINDER_MS } from "./constants";
 import { simulateTyping } from "./lib/humanize";
 import "./db/schema";
 import { checkMonthRollover, getSetting } from "./db/index";
@@ -17,6 +17,11 @@ import { commandRegistry } from "./commands/index";
 import { currentMonth } from "./lib/format";
 
 const logger = pino({ level: "silent" });
+
+// Local timestamp for the launchd log, which has none: "2026-11-17 10:42:03"
+const ts = () => new Date().toLocaleString("sv-SE");
+
+let reconnectAttempts = 0;
 
 if (!fs.existsSync(config.authDir))
   fs.mkdirSync(config.authDir, { recursive: true });
@@ -53,15 +58,25 @@ async function connectToWhatsApp() {
     }
 
     if (connection === "close") {
-      const shouldReconnect =
-        (lastDisconnect?.error as Boom)?.output?.statusCode !==
-        DisconnectReason.loggedOut;
-      console.log("Connection closed. Reconnecting:", shouldReconnect);
-      if (shouldReconnect) {
-        setTimeout(() => connectToWhatsApp(), 3000);
+      const statusCode = (lastDisconnect?.error as Boom)?.output?.statusCode;
+
+      if (statusCode === DisconnectReason.loggedOut) {
+        // Stay alive instead of exiting: launchd KeepAlive would restart us every ~10s for nothing
+        const warn = () =>
+          console.log(`[${ts()}] ❌ Sessão desconectada pelo WhatsApp (401). Rode: bash scripts/relogin.sh`);
+        warn();
+        setInterval(warn, LOGGED_OUT_REMINDER_MS);
+        return;
       }
+
+      // Exponential backoff: a fixed 3s retry hammered WhatsApp ~850 times before the 05/11 logout
+      const delay = Math.min(RECONNECT_BASE_MS * 2 ** reconnectAttempts, RECONNECT_MAX_MS);
+      reconnectAttempts++;
+      console.log(`[${ts()}] Conexão caiu (código ${statusCode ?? "?"}). Reconectando em ${delay / 1000}s`);
+      setTimeout(() => connectToWhatsApp(), delay);
     } else if (connection === "open") {
-      console.log("✅ Money Bot conectado ao WhatsApp!");
+      reconnectAttempts = 0;
+      console.log(`[${ts()}] ✅ Money Bot conectado ao WhatsApp!`);
     }
   });
 
