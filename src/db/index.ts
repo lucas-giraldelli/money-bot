@@ -3,6 +3,7 @@ export * from "./payments";
 export * from "./expenses";
 export * from "./settings";
 export * from "./weekly";
+export * from "./messages";
 
 import { getSetting, setSetting } from "./settings";
 import { incrementInstallments } from "./bills";

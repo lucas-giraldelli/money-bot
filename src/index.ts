@@ -3,6 +3,8 @@ import {
   useMultiFileAuthState,
   DisconnectReason,
   fetchLatestBaileysVersion,
+  normalizeMessageContent,
+  WAMessageStubType,
 } from "@whiskeysockets/baileys";
 import { Boom } from "@hapi/boom";
 import pino from "pino";
@@ -12,7 +14,7 @@ import { config } from "./config";
 import { MSG_MAX_AGE_MS, RECONNECT_BASE_MS, RECONNECT_MAX_MS, LOGGED_OUT_REMINDER_MS } from "./constants";
 import { simulateTyping } from "./lib/humanize";
 import "./db/schema";
-import { checkMonthRollover, getSetting } from "./db/index";
+import { checkMonthRollover, getSetting, claimMessage } from "./db/index";
 import { commandRegistry } from "./commands/index";
 import { currentMonth } from "./lib/format";
 
@@ -22,6 +24,17 @@ const logger = pino({ level: "silent" });
 const ts = () => new Date().toLocaleString("sv-SE");
 
 let reconnectAttempts = 0;
+
+// WhatsApp calls can hang forever without throwing; fail loudly instead
+const SEND_TIMEOUT_MS = 20_000;
+function withTimeout<T>(label: string, p: Promise<T>): Promise<T> {
+  return Promise.race([
+    p,
+    new Promise<T>((_, reject) =>
+      setTimeout(() => reject(new Error(`${label} sem resposta em ${SEND_TIMEOUT_MS / 1000}s`)), SEND_TIMEOUT_MS),
+    ),
+  ]);
+}
 
 if (!fs.existsSync(config.authDir))
   fs.mkdirSync(config.authDir, { recursive: true });
@@ -84,27 +97,38 @@ async function connectToWhatsApp() {
     if (type !== "notify" && type !== "append") return;
 
     for (const msg of messages) {
-      const msgTs = Number(msg.messageTimestamp ?? 0) * 1000;
-      if (msgTs > 0 && Date.now() - msgTs > MSG_MAX_AGE_MS) continue;
-
       const remoteJid = msg.key.remoteJid ?? "";
+      if (remoteJid.endsWith("@newsletter")) continue;
 
-      const text =
-        msg.message?.conversation ??
-        msg.message?.extendedTextMessage?.text ??
-        "";
+      // Unwraps ephemeral (mensagens temporárias), view-once and edited messages
+      const content = normalizeMessageContent(msg.message);
+      const text = content?.conversation ?? content?.extendedTextMessage?.text ?? "";
+
+      // Every drop of a "!" command is logged: silent drops made "bot não responde" impossible to debug
+      if (msg.messageStubType === WAMessageStubType.CIPHERTEXT) {
+        console.log(`[${ts()}] skip: falha ao descriptografar jid=${remoteJid}`);
+        continue;
+      }
+      if (!text.startsWith("!")) continue;
+
+      const ageMs = Date.now() - Number(msg.messageTimestamp ?? 0) * 1000;
+      if (msg.messageTimestamp && ageMs > MSG_MAX_AGE_MS) {
+        console.log(`[${ts()}] skip: comando antigo (${Math.round(ageMs / 1000)}s) jid=${remoteJid} text=${text}`);
+        continue;
+      }
 
       const isGroup = remoteJid.endsWith("@g.us");
-      const isNewsletter = remoteJid.endsWith("@newsletter");
-      if (isNewsletter) continue;
-
       if (isGroup) {
         const allowedGroups: string[] = JSON.parse(getSetting("groups") ?? "[]");
         const cmd = text.trim().split(" ")[0].toLowerCase();
         const bypass = cmd === "!defgrupo";
-        if (!bypass && !allowedGroups.includes(remoteJid)) continue;
-      } else {
-        if (!remoteJid.endsWith("@s.whatsapp.net") && !remoteJid.endsWith("@lid")) continue;
+        if (!bypass && !allowedGroups.includes(remoteJid)) {
+          console.log(`[${ts()}] skip: grupo não registrado jid=${remoteJid} text=${text}`);
+          continue;
+        }
+      } else if (!remoteJid.endsWith("@s.whatsapp.net") && !remoteJid.endsWith("@lid")) {
+        console.log(`[${ts()}] skip: jid desconhecido jid=${remoteJid}`);
+        continue;
       }
 
       const rawSenderJid = isGroup
@@ -114,31 +138,45 @@ async function connectToWhatsApp() {
         .replace("@s.whatsapp.net", "")
         .replace("@lid", "");
 
-      if (!text.startsWith("!")) continue;
-
-      console.log(`[${isGroup ? "GROUP" : "DM"}] sender=${senderNumber} pushName=${msg.pushName} text=${text}`);
+      console.log(
+        `[${ts()}] [${isGroup ? "GROUP" : "DM"}] sender=${senderNumber} pushName=${msg.pushName} atraso=${Math.round(ageMs / 1000)}s text=${text}`,
+      );
 
       if (allowedNumbers.length > 0 && !allowedNumbers.some((n) => senderNumber.includes(n))) {
         console.log("skip: unauthorized sender", senderNumber);
         continue;
       }
 
+      if (msg.key.id && !claimMessage(msg.key.id)) {
+        console.log(`[${ts()}] skip: comando já processado id=${msg.key.id}`);
+        continue;
+      }
+
       const isAdmin = senderNumber.includes(adminNumber);
       const name = msg.pushName ?? senderNumber;
 
-      await sock.readMessages([msg.key]);
+      // Read receipt is cosmetic: never let it block the reply
+      withTimeout("readMessages", sock.readMessages([msg.key])).catch((err) =>
+        console.error(`[${ts()}] readMessages falhou:`, err?.message ?? err),
+      );
 
       const send = async (response: string) => {
         for (let attempt = 1; attempt <= 3; attempt++) {
           try {
-            if (attempt === 1) await simulateTyping(sock, remoteJid);
-            await sock.sendMessage(remoteJid, { text: response });
+            if (attempt === 1) {
+              await withTimeout("simulateTyping", simulateTyping(sock, remoteJid)).catch((err) =>
+                console.error(`[${ts()}] simulateTyping falhou:`, err?.message ?? err),
+              );
+            }
+            const started = Date.now();
+            const sent = await withTimeout("sendMessage", sock.sendMessage(remoteJid, { text: response }));
+            console.log(`[${ts()}] enviado id=${sent?.key.id} em ${Date.now() - started}ms`);
             return;
           } catch (err: any) {
             if (attempt < 3 && err?.message?.includes("No sessions")) {
               await new Promise((r) => setTimeout(r, 1500 * attempt));
             } else {
-              console.error("Failed to send message:", err);
+              console.error(`[${ts()}] Falha ao enviar (tentativa ${attempt}):`, err?.message ?? err);
               return;
             }
           }

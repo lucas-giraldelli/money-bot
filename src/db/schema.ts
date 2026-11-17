@@ -38,6 +38,14 @@ try { db.exec("ALTER TABLE bills ADD COLUMN frequency TEXT NOT NULL DEFAULT 'mon
 try { db.exec("ALTER TABLE bills ADD COLUMN weekday INTEGER DEFAULT NULL"); } catch {}
 try { db.exec("ALTER TABLE bills ADD COLUMN paid_through TEXT DEFAULT NULL"); } catch {}
 
+// Message ids already handled, so late or re-delivered commands never run twice
+db.exec(`
+  CREATE TABLE IF NOT EXISTS processed_messages (
+    id         TEXT PRIMARY KEY,
+    created_at TEXT DEFAULT CURRENT_TIMESTAMP
+  );
+`);
+
 // Weekly bills: one row per !pago, covering every due date in (prev_paid_through, paid_through]
 db.exec(`
   CREATE TABLE IF NOT EXISTS weekly_payments (

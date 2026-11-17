@@ -1,4 +1,5 @@
-export const MSG_MAX_AGE_MS = 30_000;
+// Own-phone messages can reach the linked device minutes late; duplicates are blocked by processed_messages
+export const MSG_MAX_AGE_MS = 10 * 60_000;
 export const REPLY_JITTER_MIN_MS = 200;
 export const REPLY_JITTER_MAX_MS = 700;
 export const FUZZY_THRESHOLD = 0.78;
