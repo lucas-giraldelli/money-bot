@@ -80,16 +80,18 @@ src/
 
 O rollover mensal é lazy: verificado no startup e a cada comando, comparando o mês corrente com o último mês conhecido em `settings`.
 
-## Auto-start no macOS
+## Deploy (Docker)
 
-Há um plist do `launchd` em `infra/com.moneybot.plist`. Para instalar:
+Roda em Docker Compose (`compose.yaml`): imagem Node 20, com `data/` e `.env` montados do host.
+Não há hot reload — o código entra na imagem no build.
 
 ```bash
-cp infra/com.moneybot.plist ~/Library/LaunchAgents/
-launchctl load -w ~/Library/LaunchAgents/com.moneybot.plist
+docker compose up -d --build   # subir / aplicar mudança de código
+docker logs -f money-bot       # logs
 ```
 
-Logs em `~/Library/Logs/moneybot.log` e `~/Library/Logs/moneybot-err.log`.
+Nunca rode duas instâncias ao mesmo tempo: elas disputam a mesma sessão do WhatsApp.
+O plist em `infra/` é do deploy antigo no macOS.
 
 ## Notas
 
