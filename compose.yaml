@@ -1,0 +1,17 @@
+services:
+  money-bot:
+    build: .
+    image: money-bot:latest
+    container_name: money-bot
+    restart: unless-stopped
+    init: true
+    env_file: .env
+    environment:
+      TZ: America/Manaus
+    volumes:
+      - ./data:/app/data
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: "3"
